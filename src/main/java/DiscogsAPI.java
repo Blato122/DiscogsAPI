@@ -242,8 +242,6 @@ public class DiscogsAPI {
         commonGroups.remove(name); // optional
         commonGroups.forEach(DiscogsAPI::printArtistsCommonGroups); // (k, v) -> print(k, v);
 
-        // moze dac w takim razie do wyboru gdzie to wypisac? jako 3 argument
-        //jest sens zwracac te interfejsy..? tylko komplikuje to wszystko
 
         System.exit(0);
     }
