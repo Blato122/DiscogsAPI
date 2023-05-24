@@ -158,8 +158,9 @@ public class DiscogsAPI {
     }
 
     public static Map<String, List<String>> getArtistsCommonGroups(List<String> artists) throws IOException {
-        if (artists.size() <= 1) {
+        if (artists == null || artists.size() <= 1) {
             System.err.println("getArtistsCommonGroups() - not a group!");
+            return null;
         }
 
         Map<String, List<String>> map = new TreeMap<>(); //  tree - sorted
@@ -239,9 +240,11 @@ public class DiscogsAPI {
 
         var members = getActiveGroupMembers(name);
         var commonGroups = getArtistsCommonGroups(members);
+        if (commonGroups == null) {
+            System.exit(1);
+        }
         commonGroups.remove(name); // optional
         commonGroups.forEach(DiscogsAPI::printArtistsCommonGroups); // (k, v) -> print(k, v);
-
 
         System.exit(0);
     }
