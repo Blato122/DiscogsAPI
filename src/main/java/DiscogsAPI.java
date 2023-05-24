@@ -5,10 +5,7 @@ import org.json.JSONObject;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class DiscogsAPI {
     final private static String tokenFile = "token.txt";
@@ -48,7 +45,7 @@ public class DiscogsAPI {
     private static String getToken() throws IOException {
         File file = new File(tokenFile);
         if(!file.exists()) {
-            file.createNewFile();
+            boolean ignore = file.createNewFile();
             System.err.println("token.txt created - insert your token there");
             System.exit(1);
         }
@@ -60,7 +57,7 @@ public class DiscogsAPI {
     }
 
     public static String getArtistAddr(String artist) throws IOException {
-        artist = artist.replaceAll("[^\\p{IsAlphabetic}\\p{IsDigit}]", "");
+        artist = artist.replaceAll("[^\\p{IsAlphabetic}\\d]", "");
         String searchAddr = "https://api.discogs.com/database/search?q={name}&type=artist&token={token}"
                 .replace("{name}", artist)
                 .replace("{token}", getToken());
@@ -87,9 +84,9 @@ public class DiscogsAPI {
     }
 
     public static String getDiscography(String artist) throws IOException {
-        artist = artist.replaceAll("[^\\p{IsAlphabetic}\\p{IsDigit}]", "");
+        artist = artist.replaceAll("[^\\p{IsAlphabetic}\\d]", "");
         String artistAddr = getArtistAddr(artist);
-        String releasesAddr = null;
+        String releasesAddr;
         if (artistAddr == null) {
             return null;
         } else {
@@ -165,12 +162,11 @@ public class DiscogsAPI {
             System.err.println("getArtistsCommonGroups() - not a group!");
         }
 
-        Map<String, List<String>> map = new HashMap<>();
+        Map<String, List<String>> map = new TreeMap<>(); //  tree - sorted
         Map<String, List<String>> invMap = new HashMap<>(); // inverted: key = artist, value = groups
-        // List<String> commonGroups = new ArrayList<>();
 
         for (String artist : artists) {
-            String artistAddr = getArtistAddr(artist.replaceAll("[^\\p{IsAlphabetic}\\p{IsDigit}]", ""));
+            String artistAddr = getArtistAddr(artist.replaceAll("[^\\p{IsAlphabetic}\\d]", ""));
             if (artistAddr == null) {
                 continue;
             }
@@ -189,12 +185,23 @@ public class DiscogsAPI {
                 continue;
             }
 
-            // ...
-            List<String> tmpList = new ArrayList<>();
-            String groupName = null;
+            // create a map
+            List<String> tmpListInv = new ArrayList<>();
+            String groupName;
+
             for (int i = 0; i < groups.length(); ++i) {
                 groupName = groups.getJSONObject(i).getString("name");
-                tmpList.add(groupName);
+                tmpListInv.add(groupName);
+
+                // Jeśli przetwarzana właśnie grupa występuje już w mapie (invMap - jest tam jako wartość),
+                // oznacza to, że musimy ją zapisać do właściwej mapy (map),
+                // ponieważ skoro pojawia się drugi raz, to jest wspólna dla jakichś artystów
+                // ---
+                // Dodajemy więc tę grupę jako klucz do mapy (map),
+                // a jako wartość dodajemy bieżącego artystę (bo to jego grupy muzyczne właśnie przetwarzamy).
+                // Jako kolejne wartości, dodajemy artystów, z którymi dzieli on ten zespół.
+                // Są nimi po prostu klucze.
+
                 for (var entry : invMap.entrySet()) {
                     if (entry.getValue().contains(groupName)) {
                         List<String> tmp = new ArrayList<>();
@@ -205,10 +212,9 @@ public class DiscogsAPI {
                     }
                 }
             }
-            invMap.put(artist, tmpList);
+
+            invMap.put(artist, tmpListInv);
         }
-        System.out.println(invMap);
-        System.out.println(map);
 
         return map;
     }
@@ -231,16 +237,14 @@ public class DiscogsAPI {
             System.out.println(discography);
         }
 
-        // var czy zrobić z tego arraylist i hashmap???
         var members = getActiveGroupMembers(name);
-        var membersInfo = getArtistsCommonGroups(members);
-        membersInfo.forEach(DiscogsAPI::printArtistsCommonGroups); // lambda (k, v) -> print(k, v);
+        var commonGroups = getArtistsCommonGroups(members);
+        commonGroups.remove(name); // optional
+        commonGroups.forEach(DiscogsAPI::printArtistsCommonGroups); // (k, v) -> print(k, v);
+
         // moze dac w takim razie do wyboru gdzie to wypisac? jako 3 argument
-
-        // haszmapy arraylisty to nie problem?
-        // nie użyje się tego poza javą... (xd)
-
         //jest sens zwracac te interfejsy..? tylko komplikuje to wszystko
+
         System.exit(0);
     }
 }
